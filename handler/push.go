@@ -77,6 +77,18 @@ func Push(
 				})
 			}
 
+			// infinite lifetime as default
+			var lifetime time.Duration = 0
+
+			lifetimeHeader := r.Header.Get("Lifetime")
+			if lifetimeHeader != "" {
+				lifetime, err = time.ParseDuration(lifetimeHeader)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+			}
+
 			var metricFamilies map[string]*dto.MetricFamily
 			ctMediatype, ctParams, ctErr := mime.ParseMediaType(r.Header.Get("Content-Type"))
 			if ctErr == nil && ctMediatype == "application/vnd.google.protobuf" &&
@@ -114,6 +126,7 @@ func Push(
 			ms.SubmitWriteRequest(storage.WriteRequest{
 				Labels:         labels,
 				Timestamp:      now,
+				Lifetime:       lifetime,
 				MetricFamilies: metricFamilies,
 			})
 			w.WriteHeader(http.StatusAccepted)
